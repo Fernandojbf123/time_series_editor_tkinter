@@ -149,7 +149,7 @@ time_series_plotter_tkinter/
 
 ## Requisitos del Sistema
 
-- Python 3.8 o superior
+- Python 3.13.5
 - Sistema operativo: Windows, macOS o Linux
 - Git (para clonar el repositorio)
 
