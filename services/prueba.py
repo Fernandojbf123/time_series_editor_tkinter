@@ -111,33 +111,41 @@ class InteractivePlotterTk:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
 
-        # main_frame: 2 filas, 3 columnas
-        # Filas 0 y 1: equitativas
-        main_frame.rowconfigure(0, weight=1)
-        main_frame.rowconfigure(1, weight=1)
-        # Columnas 0 y 1: 90%, columna 2: 10%
-        main_frame.columnconfigure(0, weight=9)
-        main_frame.columnconfigure(1, weight=9)
-        main_frame.columnconfigure(2, weight=1)
+        # main_frame: 4 filas, 3 columnas
+        # Filas 0, 1, 2: 85% del tamaño vertical total (distribuido equitativamente)
+        main_frame.rowconfigure(0, weight=40)
+        main_frame.rowconfigure(1, weight=40)
+        main_frame.rowconfigure(2, weight=10)  # Compensar para sumar 85
+        main_frame.rowconfigure(3, weight=0)  # Fila 3: 15% del tamaño vertical
+        # Columnas 0 y 1: 93% del tamaño horizontal total, columna 2: 7%
+        main_frame.columnconfigure(0, weight=46)
+        main_frame.columnconfigure(1, weight=47)  # Compensar para sumar 93
+        main_frame.columnconfigure(2, weight=7)
 
-        # Frame para el gráfico (ocupa filas 0,1 y columnas 0,1)
+        # Frame para el gráfico (ocupa filas 0, 1, 2 y columnas 0, 1)
         graph_frame = ttk.Frame(main_frame)
-        graph_frame.grid(row=0, column=0, rowspan=2, columnspan=2, sticky=(tk.N, tk.S, tk.E, tk.W))
+        graph_frame.grid(row=0, column=0, rowspan=3, columnspan=2, sticky=(tk.N, tk.S, tk.E, tk.W))
         self.create_plot(graph_frame)
+
+        # Frame para la barra de herramientas (fila 3, columnas 0, 1)
+        toolbar_frame = ttk.Frame(main_frame)
+        toolbar_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.N, tk.S, tk.E, tk.W))
+        self.create_toolbar(toolbar_frame)
 
         # Frame para checkboxes (fila 0, columna 2)
         checkbox_frame = ttk.Frame(main_frame)
-        checkbox_frame.grid(row=0, column=2, sticky=(tk.N, tk.E, tk.S, tk.W))
+        checkbox_frame.grid(row=0, rowspan=3, column=2, sticky=(tk.N, tk.E, tk.S, tk.W))
         self.create_checkboxes(checkbox_frame)
 
-        # Frame para botones (fila 1, columna 2)
+        # Frame para botones (fila 3, columna 2)
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=1, column=2, sticky=(tk.N, tk.E, tk.S, tk.W))
+        button_frame.grid(row=3, column=2, sticky=(tk.N, tk.E, tk.S, tk.W))
         # Configurar para centrar vertical y horizontalmente
         button_frame.rowconfigure(0, weight=1)
         button_frame.rowconfigure(1, weight=1)
         button_frame.rowconfigure(2, weight=1)
         button_frame.rowconfigure(3, weight=1)
+        button_frame.rowconfigure(4, weight=1)
         button_frame.columnconfigure(0, weight=1)
 
         # Botón para activar/desactivar selección de puntos
@@ -207,10 +215,11 @@ class InteractivePlotterTk:
         self.canvas = FigureCanvasTkAgg(self.fig, parent)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-         # Agregar barra de herramientas para zoom/pan
-        toolbar = NavigationToolbar2Tk(self.canvas, parent)
-        toolbar.update()
-        toolbar.pack(side=tk.BOTTOM, fill=tk.X)
+    def create_toolbar(self, parent):
+        """Crea la barra de herramientas para zoom/pan"""
+        self.toolbar = NavigationToolbar2Tk(self.canvas, parent)
+        self.toolbar.update()
+        self.toolbar.pack(fill=tk.BOTH, expand=True)
 
     def cambiar_intervalo_tiempo(self): # Contexto
         self.estado_boton_cambiar_intervalo.cambiar(self)
@@ -223,8 +232,9 @@ class InteractivePlotterTk:
         
         # Frame para los checkboxes
         checkbox_container = ttk.Frame(parent)
-        checkbox_container.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        checkbox_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         checkbox_container.columnconfigure(0, weight=1)
+        checkbox_container.rowconfigure(0, weight=1)
         
         # Crear un canvas con scrollbar para los checkboxes
         canvas = tk.Canvas(checkbox_container)
@@ -250,10 +260,12 @@ class InteractivePlotterTk:
             self.column_vars[col] = var
             checkbox = ttk.Checkbutton(scrollable_frame, text=col, variable=var, 
                                      command=lambda c=col: self.on_checkbox_change(c))
-            checkbox.grid(row=i, column=0, sticky=tk.W, padx=5, pady=2)
+            checkbox.grid(row=i, column=0, sticky=(tk.W, tk.N, tk.S), padx=5, pady=2)
         
         # Configurar el grid para que se expanda
         parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(0, weight=1)
+
     
     def on_checkbox_change(self, column):
         """Maneja los cambios en los checkboxes"""

@@ -1,5 +1,5 @@
-from DataFrame_maker import crear_dataframe_corrientes_desde_pickle, create_sample_data, leer_datos_de_corrientes_pickle
-from prueba import InteractivePlotterTk
+from services.DataFrame_maker import crear_dataframe_corrientes_desde_pickle, create_sample_data, leer_datos_de_corrientes_pickle
+from services.prueba import InteractivePlotterTk
 import os
 # from GraCorrector import GraCorrector
 
