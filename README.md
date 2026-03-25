@@ -48,23 +48,54 @@ Graficador interactivo de series de tiempo con interfaz gráfica en Tkinter y Ma
    cd time_series_plotter_tkinter
    ```
 
-### 2. Crear el ambiente virtual
+### 2. Instalar UV (si aún no lo tienes)
+
+UV es un manejador de paquetes Python ultra-rápido escrito en Rust. Si no lo tienes instalado:
 
 #### En PowerShell:
 ```powershell
-python -m venv .venv
+pip install uv
 ```
 
 #### En Git Bash o Linux:
 ```bash
-python -m venv .venv
+pip install uv
 ```
 
-### 3. Activar el ambiente virtual
+Después de instalar, cierra y vuelve a abrir tu terminal.
 
+### 3. Crear el ambiente virtual e instalar dependencias
+
+UV simplifica el proceso al crear el ambiente e instalar las dependencias en un solo paso:
+En la carpeta del proyecto ejecuta el comando: 
+
+#### En PowerShell o Git Bash:
+```powershell
+uv sync
+```
+
+Este comando:
+- Lee las dependencias del archivo `pyproject.toml`
+- Crea automáticamente el ambiente virtual en `.venv`
+- Instala todas las librerías necesarias:
+  - pandas (>=3.0.1)
+  - numpy (>=2.4.3)
+  - matplotlib (>=3.10.8)
+  - netCDF4 (>=1.7.4)
+  - scipy (>=1.17.1)
+  - ipykernel (>=7.2.0)
+  - tkinter (incluido con Python)
+
+**Nota**: No necesitas activar manualmente el ambiente virtual. UV lo gestiona automáticamente.
+
+### 4. Ejecutar el proyecto
+Asegúrate de que el ambiente virtual está activo, se debería ver (time-series-editor-tkinter) en la terminal
+
+Sino se ha activado ejecuta:
 #### En PowerShell:
 ```powershell
 .\.venv\Scripts\Activate.ps1
+python main.py
 ```
 
 **Nota**: Si obtienes un error de permisos, ejecuta primero:
@@ -74,26 +105,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 #### En Git Bash o Linux:
 ```bash
-source .venv/Scripts/activate
-```
-
-### 4. Instalar las dependencias
-
-Con el ambiente virtual activado, ejecuta:
-
-```powershell
-pip install -r requirements.txt
-```
-
-Esto instalará todas las librerías necesarias:
-- pandas
-- numpy
-- matplotlib
-- tkinter (incluido con Python)
-
-### 5. Ejecutar el proyecto
-
-```powershell
+source .venv/bin/activate
 python main.py
 ```
 
@@ -109,13 +121,15 @@ Si prefieres usar el ambiente base de Conda en lugar de crear un ambiente virtua
    ```
 
 3. **Instala las dependencias**:
+   
+   Con pip:
    ```bash
-   pip install -r requirements.txt
+   pip install pandas numpy matplotlib netcdf4 scipy ipykernel
    ```
    
-   O si prefieres usar conda:
+   O con conda:
    ```bash
-   conda install pandas numpy matplotlib
+   conda install pandas numpy matplotlib netcdf4 scipy ipykernel
    ```
 
 4. **Ejecuta el proyecto**:
@@ -149,7 +163,7 @@ time_series_plotter_tkinter/
 
 ## Requisitos del Sistema
 
-- Python 3.13.5
+- Python 3.14.3
 - Sistema operativo: Windows, macOS o Linux
 - Git (para clonar el repositorio)
 
@@ -159,7 +173,7 @@ Este proyecto es de código abierto y está disponible para uso educativo y de i
 
 ## Contribuciones
 
-Las contribuciones son bienvenidas. Por favor, abre un issue o pull request en GitHub.
+Las contribuciones son bienvenidas. Por favor, abre un issue o pull request en GitHub y recuerda trabajar en una rama diferente a main.
 
 ## Contacto
 
