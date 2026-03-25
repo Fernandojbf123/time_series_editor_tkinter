@@ -62,6 +62,8 @@ def crear_dataframe_corrientes_desde_pickle(data,):
         df["salinidad_mct"] = data['Salinidad'].to_numpy()
 
     df.sort_values('tspan', inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    
     return df, profs
 
 def crear_dataframe_viento_desde_pickle(data):
@@ -98,6 +100,8 @@ def crear_dataframe_viento_desde_pickle(data):
     df['Lon'] = data['Lon'].to_numpy()
     
     df.sort_values('tspan', inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    
     return df
 
 def crear_dataframe_oleaje_desde_pickle(data):
@@ -115,5 +119,7 @@ def crear_dataframe_oleaje_desde_pickle(data):
     df['vardir'] = data['VarDir'].to_numpy()
     
     df.sort_values('tspan', inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    
     return df
 

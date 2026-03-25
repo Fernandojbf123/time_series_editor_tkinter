@@ -40,7 +40,11 @@ class InteractivePlotterTk:
 
         # Sirve para deshacer la acción de eliminado. Se almacenan 3 array de eliminaciones por cada columna
         self.current_action = 0 
-
+        
+        # Configurar el color inicial del boton de cambio de color
+        self.colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
+        self.current_color = 0
+        
     def set_current_action(self,val):
         self.current_action += val
         if self.current_action < 0:
@@ -147,31 +151,40 @@ class InteractivePlotterTk:
         button_frame.rowconfigure(3, weight=1)
         button_frame.rowconfigure(4, weight=1)
         button_frame.columnconfigure(0, weight=1)
+        button_frame.columnconfigure(1, weight=1)
+        button_frame.columnconfigure(2, weight=1)
 
         # Botón para activar/desactivar selección de puntos
         self.selecting_points = False# Crear el selector de rectángulo
-        self.select_button = ttk.Button(button_frame, text="Seleccionar puntos", command=self.toggle_selector)
-        self.select_button.grid(row=0, column=0, padx=5, pady=5, sticky='nsew')         
+        self.select_button = ttk.Button(button_frame, text="Selec ptos", command=self.__toggle_selector)
+        self.select_button.grid(row=0, column=0, padx=3, pady=5, sticky='nsew')         
 
         # Botón eliminar seleccionados
-        self.delete_button = ttk.Button(button_frame, text="Eliminar seleccionados", command=self.__eliminate_selected)
-        self.delete_button.grid(row=1, column=0, padx=5, pady=5, sticky='nsew')
+        self.delete_button = ttk.Button(button_frame, text="Borrar selec", command=self.__eliminate_selected)
+        self.delete_button.grid(row=0, column=1, padx=3, pady=5, sticky='nsew')
         self.delete_button.state(["disabled"])
-
+        
+        # Botón restaurar puntos seleccionados
+        self.restore_button = ttk.Button(button_frame, text="Restaurar selec", command=self.__restore_selected)
+        self.restore_button.grid(row=0, column=2, padx=3, pady=5, sticky='nsew')
+        
         # Botón deshacer ultima acción (solo borrar)
         self.undo_button = ttk.Button(button_frame, text="Deshacer acción", command=self.__undo)
-        self.undo_button.grid(row=2, column=0, padx=5, pady=5, sticky='nsew')
+        self.undo_button.grid(row=1, column=0, padx=3, pady=5, sticky='nsew')
         self.undo_button.state(["disabled"])
-
-        # Botón restaurar puntos seleccionados
-        restore_button = ttk.Button(button_frame, text="Restaurar puntos seleccionados")
-        restore_button.grid(row=3, column=0, padx=5, pady=5, sticky='nsew')
 
         # Botón para cambiar intervalo de tiempo
         self.estado_boton_cambiar_intervalo = StateTicksMes() # Estado inicial
         self.cambiar_intervalo_btn = ttk.Button(button_frame, text="Poner ticks cada semana", command=self.cambiar_intervalo_tiempo) # Estados-> Hay 3: Cada mes, cada semana, cada 24 horas
-        self.cambiar_intervalo_btn.grid(row=4, column=0, padx=5, pady=5, sticky='nsew')
+        self.cambiar_intervalo_btn.grid(row=1, column=1, padx=3, pady=5, sticky='nsew')
         self.cambiar_intervalo_tiempo() # Inicializa el estado del botón (llamar al contexto)
+        
+        # Botón para cambiar color de líneas
+        self.change_color_btn = ttk.Button(button_frame, text="Cambiar color", command=self.__change_color)
+        self.change_color_btn.grid(row=1, column=2, padx=3, pady=5, sticky='nsew')
+        
+        self.save_btn = ttk.Button(button_frame, text="Guardar cambios", command=self.__save_changes)
+        self.save_btn.grid(row=2, column=0, columnspan=3, padx=3, pady=5, sticky='nsew')
 
     def update_undo_button(self):
         if self.current_action == 0:
@@ -288,7 +301,7 @@ class InteractivePlotterTk:
             self.canvas.draw()
 
 
-    def toggle_selector(self):
+    def __toggle_selector(self):
         self.rectangle_selector = RectangleSelector(self.ax, self.onselect)
         self.selecting_points = not self.selecting_points
         if self.selecting_points:
@@ -372,6 +385,34 @@ class InteractivePlotterTk:
         self.update_undo_button()
         self.update_plot()
         
+    def __restore_selected(self):
+        print(self.selected_columns)
+        print(self.selected_points)
+        self.data[self.tspan_var_name]
+        
+        
+    def __change_color(self):
+        """Grafica las columnas seleccionadas"""
+        # Verificar que haya columnas seleccionadas
+        self.__next_color()
+        for line in self.ax.get_lines():
+            if line.get_label() in self.selected_columns:
+                line.set_color(self.colors[self.current_color])
+                break
+        # Actualizar el canvas        
+        self.canvas.draw()
+        
+    
+    def __next_color(self):
+        self.current_color += 1
+        if self.current_color >= len(self.colors):
+            self.current_color = 0
+        
+    def __save_changes(self):
+        """Guarda los cambios realizados en el DataFrame (puede ser sobrescribiendo el original o creando un nuevo archivo)"""
+        # ESTA FUNCIÓN DEBE USAR EL PKL DE DATOS VALIDADOS
+        
+        pass
         
 
     def update_plot(self):

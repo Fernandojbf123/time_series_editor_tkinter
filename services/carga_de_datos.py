@@ -77,7 +77,7 @@ def cargar_telemetria_adcp_dat(ruta_a_carpeta, nombre_de_archivo, indices):
                     if key not in dict_corrientes:
                         dict_corrientes[key] = []
                     dict_corrientes[key].append(value)
-    
+                
     output_df = pd.DataFrame(dict_corrientes)
     output_df.sort_values('tspan', inplace=True)
     output_df.drop_duplicates(subset='tspan', inplace=True, keep='first')
@@ -125,39 +125,51 @@ def cargar_nc_adcp(ruta_a_carpeta, nombre_de_archivo):
 
 
 ############ OLEAJE ##########
-# 1. Cargar binario de memoria del oleaje
+# 1. Cargar crudo unido mem o realt
+def cargar_pickle_oleaje(ruta_a_carpeta, nombre_de_archivo):
+    """
+    unido mem = binario mem + telemetría mem + binario realt + telemetría realt)
+    unido realt = binario realt + telemetría realt
+    Carga un archivo .pkl de oleaje (binario unido con telemetría 
+    """
+    ruta_de_archivo = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+    df_pkl = leer_datos_de_pickle(ruta_de_archivo)
+    output_df = crear_dataframe_oleaje_desde_pickle(df_pkl)
+    return output_df
+ 
+# 3. Cargar datos de dirspec de memoria (DIRSPEC)
 
-# 2. Cargar telemetria .dat del oleaje
+# 4. Cargar datos de dirspec de telemetria (DIRSPEC)
 
-# 3. Cargar pickle del oleaje crudo
-
-# 4. Cargar pickle del oleaje validado
-
-# 5. Cargar datos de dirspec de memoria (DIRSPEC)
-
-# 6. Cargar datos de dirspec de telemetria (DIRSPEC)
-
-# 8. Cargar NETCDF de oleaje
-# def cargar_nc_oleaje(ruta_a_carpeta, nombre_de_archivo):
-#     """ Carga el NETCDF de oleaje y devuelve un DataFrame con las variables relevantes"""
-#     dataset = nc.Dataset(ruta_nc)
+# 5. Cargar NETCDF de oleaje
+def cargar_nc_oleaje(ruta_a_carpeta, nombre_de_archivo):
+    """ Carga el NETCDF de oleaje y devuelve un DataFrame con las variables relevantes"""
+    ruta_al_archivo_nc = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+    dataset = nc.Dataset(ruta_al_archivo_nc)
     
-#     # Extraer variables relevantes
-#     time = dataset.variables['time'][:]
-#     hmax = dataset.variables['hmax'][:]
-#     tmax = dataset.variables['tmax'][:]
-#     dmax = dataset.variables['dmax'][:]
+    # Extraer variables relevantes
+    jd = np.array(dataset.variables['jd'][:])
+    tspan = pd.to_datetime(datenum_to_datetime(jd))
     
-#     # Crear un DataFrame
-#     data_dict = {
-#         'time': pd.to_datetime(time, unit='s'),  # Convertir tiempo a formato datetime
-#         'hmax': hmax,
-#         'tmax': tmax,
-#         'dmax': dmax
-#     }
+    Hm = np.array(dataset.variables['Hm'][:]).flatten()
+    Hs = np.array(dataset.variables['Hs'][:]).flatten()
+    Tp = np.array(dataset.variables['Tp'][:]).flatten()
+    Dir = np.array(dataset.variables['Dir'][:]).flatten()
+    VarDir = np.array(dataset.variables['VarDir'][:]).flatten()
+    DirSpec = np.array(dataset.variables['DirSpec'][:])
+    
+    # Crear un DataFrame
+    data_dict = {
+        'tspan': tspan,  # Convertir tiempo a formato datetime
+        'Hs': Hs,
+        'Hmax': Hm,
+        'Tp': Tp,
+        'dir': Dir,
+        'vardir': VarDir,
+    }
 
-#     df = pd.DataFrame(data_dict)
-#     return df
+    df = pd.DataFrame(data_dict)
+    return df, DirSpec
 
 
 ############ METEO ##########
@@ -226,8 +238,13 @@ def separar_linea_de_dat_txt_corrientes(linea, indices):
     
     # Rap y dir
     rap_dir = linea.split(",")[indices["rap_dir"]]
+    
+    if rap_dir == '':
+        return None
+    
     rap = rap_dir.split("@&2C")[0::2] # [nivel]
     dir = rap_dir.split("@&2C")[1::2] # [nivel]
+    
     
     # Temp adpc
     temp_adpc = linea.split(",")[indices["temp_adpc"]]
@@ -283,3 +300,4 @@ def crear_df_inicial(fecha_de_inicio, fecha_final):
     tspan = pd.date_range(start=fecha_de_inicio, end=fecha_final, freq='h')
     df = pd.DataFrame({"tspan": tspan})
     return df
+
