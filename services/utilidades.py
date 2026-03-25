@@ -51,11 +51,11 @@ def crear_dataframe_de_boyas(dict):
     for boya, df_boya in dict.items():
         for col in df_boya.columns:
             if col != "tspan":
+                df_boya[col] = df_boya[col].astype(np.float32)
                 df = df.merge(df_boya[["tspan", col]].rename(columns={col: f"{col}_{boya}"}), on="tspan", how="left")
 
     print(df.columns)
     return df
-
 
 def combinar_dataframes_con_sufijos(df1: pd.DataFrame, df2: pd.DataFrame, sufijo_df1: str, sufijo_df2: str, how: str = 'outer') -> pd.DataFrame:
     """

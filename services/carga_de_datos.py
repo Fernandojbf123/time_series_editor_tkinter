@@ -14,6 +14,17 @@ También contiene la función que unifica los dataframes de diferentes boyas.
 
 """
 
+def listar_funciones_de_carga():
+    lista_de_funciones = [
+        "cargar_memoria_adcp_csv",
+        "cargar_telemetria_adcp_dat",
+        "cargar_pickle_adcp",
+        "cargar_nc_adcp",
+        "cargar_pickle_oleaje",
+        "cargar_nc_oleaje"
+    ]
+    return print(lista_de_funciones)
+
 ########## ADCP ##########
 # 1. Cargar CSV de memoria del ADCP
 def cargar_memoria_adcp_csv(ruta_a_carpeta:str, nombre_de_archivos:list, fecha_de_inicio:str, fecha_final:str) -> pd.DataFrame:
@@ -121,10 +132,33 @@ def cargar_nc_adcp(ruta_a_carpeta, nombre_de_archivo):
         output_dict[f"dir_{inivel}"] = dir[:, inivel-1]
 
     df = pd.DataFrame(output_dict)
-    return df
+    return df, dataset
 
 
 ############ OLEAJE ##########
+# 1. Cargar telemtría .dat de oleaje
+def cargar_telemetria_oleaje_dat(ruta_a_carpeta, nombre_de_archivo, indices):
+    """ Carga un archivo .dat de telemetría de oleaje y devuelve un DataFrame con las variables relevantes"""
+    dict_oleaje = {}
+    ruta_a_archivo = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+    with open(ruta_a_archivo, 'r', encoding='utf-8') as archivo:
+        # Oleaje
+        for linea in archivo:
+            tmp_dir = separar_linea_de_dat_txt_oleaje(linea, indices)
+            if tmp_dir is not None:
+                for key, value in tmp_dir.items():
+                    if key not in dict_oleaje:
+                        dict_oleaje[key] = []
+                    dict_oleaje[key].append(value)
+                
+    output_df = pd.DataFrame(dict_oleaje)
+    output_df.sort_values('tspan', inplace=True)
+    output_df.drop_duplicates(subset='tspan', inplace=True, keep='first')
+    output_df.reset_index(drop=True, inplace=True)
+
+    return output_df
+
+
 # 1. Cargar crudo unido mem o realt
 def cargar_pickle_oleaje(ruta_a_carpeta, nombre_de_archivo):
     """
@@ -169,7 +203,7 @@ def cargar_nc_oleaje(ruta_a_carpeta, nombre_de_archivo):
     }
 
     df = pd.DataFrame(data_dict)
-    return df, DirSpec
+    return df, dataset, DirSpec
 
 
 ############ METEO ##########
@@ -186,38 +220,142 @@ def cargar_nc_oleaje(ruta_a_carpeta, nombre_de_archivo):
 
 
 ################### FUNCIONES AUXILIARES ###################
-def crear_indices_para_crudos_dat_o_txt(tipo):
-    """"
-        Crea un diccionario con los índices de las columnas relevantes para cada tipo de mensaje (viento, oleaje, corrientes) y para cada tipo de archivo (crudo o validado)
+class Crear_indices_para_crudos_dat_o_txt():
     """
-    indices = {
-        "pos_msg": 5,
-        "msg_corrientes": 4,
-        "msg_oleaje": 3,
-        "msg_meteo": 1,
-        
-        "temp_adpc": 7,
-        "rap_dir": 9, 
-        
-        "Tp": 7,
-        "Hs": 8,
-        "Hmax": 9,
-        "dir_oleaje": 10,
-        "vardir_oleaje": 11,
-        
-        "presion": 7,
-        "humedad": 8,
-        "temp_aire": 9,
-        "dir_viento_mecanico": 10,
-        "rap_viento_mecanico": 11,
-        "dir_viento_sonico": 12,
-        "rap_viento_sonico": 13
-    }
-    if tipo == "mem":
-        for key in indices.keys():
-            indices[key] += 1
+    Crea un diccionario con los índices de las columnas relevantes para cada tipo de mensaje 
+    (viento, oleaje, corrientes) y para cada tipo de archivo (crudo o validado).
     
-    return indices
+    Variables disponibles en el diccionario indices:
+    
+    Generales:
+        - pos_msg: Posición del tipo de mensaje en la línea
+        - msg_corrientes: Identificador del mensaje de corrientes (4)
+        - msg_oleaje: Identificador del mensaje de oleaje (3)
+        - msg_meteo: Identificador del mensaje meteorológico (1)
+    
+    Corrientes (ADCP):
+        - termo_sal: Índice de la columna de temperatura del termosalinómetro
+        - temp_adpc: Índice de la columna de temperatura del ADCP
+        - rap_dir: Índice de la columna con rapidez y dirección de corrientes
+    
+    Oleaje:
+        - Tp: Índice de la columna de período pico
+        - Hs: Índice de la columna de altura significativa
+        - Hmax: Índice de la columna de altura máxima
+        - dir_oleaje: Índice de la columna de dirección del oleaje
+        - vardir_oleaje: Índice de la columna de varianza direccional
+    
+    Meteorológicos:
+        - presion: Índice de la columna de presión atmosférica
+        - humedad: Índice de la columna de humedad relativa
+        - temp_aire: Índice de la columna de temperatura del aire
+        - dir_viento_mecanico: Índice de la columna de dirección del viento mecánico
+        - rap_viento_mecanico: Índice de la columna de rapidez del viento mecánico
+        - dir_viento_sonico: Índice de la columna de dirección del viento sónico
+        - rap_viento_sonico: Índice de la columna de rapidez del viento sónico
+    
+    Parámetros:
+        tipo (str): Tipo de archivo a procesar. Valores posibles:
+                    - "mem": Datos de memoria (añade +1 a todos los índices)
+                    - Otro valor: Datos de telemetría (usa índices base)
+    
+    Ejemplo de uso:
+        >>> # Para archivos de telemetría
+        >>> indices_telemetria = Crear_indices_para_crudos_dat_o_txt("realt")
+        >>> indices = indices_telemetria.get_indices()
+        >>> print(indices["temp_adpc"])  # Output: 7
+        
+        >>> # Para archivos de memoria
+        >>> indices_memoria = Crear_indices_para_crudos_dat_o_txt("mem")
+        >>> indices = indices_memoria.get_indices()
+        >>> print(indices["temp_adpc"])  # Output: 8 (incrementado en 1)
+        
+        >>> # Modificar un índice específico
+        >>> indices_telemetria.set_index("temp_adpc", 10)
+        >>> print(indices_telemetria.get_indices()["temp_adpc"])  # Output: 10
+        
+        >>> # Ver todas las claves disponibles
+        >>> indices_telemetria.muestra_indices()
+    """
+    def __init__(self, tipo):
+        self.tipo = tipo
+        self.indices = {
+            "pos_msg": 5,
+            "msg_corrientes": 4,
+            "msg_oleaje": 3,
+            "msg_meteo": 1,
+        
+            "termo_sal": 6,
+            "temp_adpc": 7,
+            "rap_dir": 9, 
+            
+            "Tp": 7,
+            "Hs": 8,
+            "Hmax": 9,
+            "dir_oleaje": 10,
+            "vardir_oleaje": 11,
+            
+            "presion": 7,
+            "humedad": 8,
+            "temp_aire": 9,
+            "dir_viento_mecanico": 10,
+            "rap_viento_mecanico": 11,
+            "dir_viento_sonico": 12,
+            "rap_viento_sonico": 13
+        }
+        if tipo == "mem":
+            for key in self.indices.keys():
+                self.indices[key] += 1
+    
+    def muestra_indices(self):
+        """
+        Imprime todas las claves disponibles en el diccionario de índices.
+        
+        Ejemplo de uso:
+            >>> indices = Crear_indices_para_crudos_dat_o_txt("telemetria")
+            >>> indices.muestra_indices()
+            dict_keys(['pos_msg', 'msg_corrientes', 'msg_oleaje', 'msg_meteo', ...])
+        """
+        print(self.indices.keys())
+    
+    def set_index(self, key, value):
+        """
+        Modifica el valor de un índice específico en el diccionario.
+        
+        Parámetros:
+            key (str): Nombre de la clave del índice a modificar
+            value (int): Nuevo valor para el índice
+            
+        Raises:
+            KeyError: Si la clave no existe en el diccionario de índices
+        
+        Ejemplo de uso:
+            >>> indices = Crear_indices_para_crudos_dat_o_txt("telemetria")
+            >>> indices.set_index("temp_adpc", 12)
+            >>> print(indices.get_indices()["temp_adpc"])  # Output: 12
+            
+            >>> # Intento de modificar una clave inexistente
+            >>> indices.set_index("clave_invalida", 5)  # Lanza KeyError
+        """
+        if key in self.indices:
+            self.indices[key] = value
+        else:
+            raise KeyError(f"Key '{key}' not found in indices.")
+    
+    def get_indices(self):
+        """
+        Devuelve el diccionario completo de índices.
+        
+        Returns:
+            dict: Diccionario con todos los índices configurados
+        
+        Ejemplo de uso:
+            >>> indices = Crear_indices_para_crudos_dat_o_txt("telemetria")
+            >>> todos_los_indices = indices.get_indices()
+            >>> print(todos_los_indices["Hs"])  # Output: 8
+            >>> print(todos_los_indices["dir_oleaje"])  # Output: 10
+        """
+        return self.indices
 
 
 
@@ -245,9 +383,10 @@ def separar_linea_de_dat_txt_corrientes(linea, indices):
     rap = rap_dir.split("@&2C")[0::2] # [nivel]
     dir = rap_dir.split("@&2C")[1::2] # [nivel]
     
+    # Temperatura
+    temp_adpc = np.array(linea.split(",")[indices["temp_adpc"]]).astype(np.float32)
+    temp_termo = np.array(linea.split(",")[indices["termo_sal"]]).astype(np.float32)
     
-    # Temp adpc
-    temp_adpc = linea.split(",")[indices["temp_adpc"]]
     
     tmp_dict = {}
     for inivel in range(1,len(rap)+1):
@@ -266,13 +405,32 @@ def separar_linea_de_dat_txt_corrientes(linea, indices):
     
     output_dict = {
         "tspan": tspan,
-        "temp_adpc": temp_adpc
+        "temp_adpc": temp_adpc,
+        "temp_termo": temp_termo
     }
     
     for key, values in tmp_dict.items():
         output_dict[key] = values
     
     return output_dict
+
+
+def separar_linea_de_dat_txt_oleaje(linea, indices):
+    """" 
+    Recibe una línea de un archivo .dat o .txt de oleaje; cada línea representa una medición (un registro).
+    Esta función extrae la información relevante de esa línea y devuelve un DataFrame con esa información.
+    """
+    try:
+        msg = int(linea.split(",")[indices["pos_msg"]])
+    except:
+        return None
+    
+    if msg != indices["msg_oleaje"]:
+        return None
+    
+    tspan = get_tspan(linea)
+    
+    print("PENDIENTE TERMINAR ESTA FUNCION")
 
 
 def leer_datos_de_pickle(ruta_archivo):
