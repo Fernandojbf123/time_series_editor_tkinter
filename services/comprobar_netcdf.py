@@ -12,8 +12,8 @@ def comprobar_nombre_nc(nombre_de_archivo, nc_data):
         print(f"NAM correcto")
         
 def comprobar_porcentaje_de_variable(nc_data, carpeta_al_excel, nombre_archivo_porcentajes, variables="oleaje"):
-    df_excel = pd.read_excel(os.path.join(carpeta_al_excel, nombre_archivo_porcentajes))
-     
+    # df_excel = pd.read_excel(os.path.join(carpeta_al_excel, nombre_archivo_porcentajes))
+    output_df = pd.DataFrame()
     
     def get_excel_idx_var_name(df_excel):
         output_dict = {}
@@ -25,13 +25,35 @@ def comprobar_porcentaje_de_variable(nc_data, carpeta_al_excel, nombre_archivo_p
     
     if variables == "oleaje":
         nc_vars = ["Hs", "Hm", "Tp", "dir", "vardir", "dirspec"]
+        Hs = np.array(nc_data.variables["Hs"][:]).astype(np.float32).flatten()
+        Hm = np.array(nc_data.variables["Hm"][:]).astype(np.float32).flatten()
+        Tp = np.array(nc_data.variables["Tp"][:]).astype(np.float32).flatten()
+        dir = np.array(nc_data.variables["Dir"][:]).astype(np.float32).flatten()
+        vardir = np.array(nc_data.variables["VarDir"][:]).astype(np.float32).flatten()
+        dirspec = np.array(nc_data.variables["DirSpec"][:]).astype(np.float32)
+        
+        ndatos_esperados = Hs.shape[0]
+        
         output_df = pd.DataFrame()
-    
+        output_df["Variable"] = nc_vars
+        output_df["esperados"] = [ndatos_esperados] * len(nc_vars)
+        output_df["validados"] = [(~np.isnan(var)).sum() for var in [Hs, Hm, Tp, dir, vardir]] +  [np.nan] 
+        count_valid = 0
+        for iday in range(0, dirspec.shape[0]):
+            sum = np.nansum(dirspec[iday,:,:])
+            if sum > 0:
+                count_valid += 1
+        
+        output_df.iloc[-1,2] = count_valid
+        output_df["porcentaje_validados"] = output_df["validados"] / output_df["esperados"] * 100
+        
+        return output_df
+        
     elif variables == "corrientes":
         nc_vars = ["Temp", "u", "v"]
-        u = np.array(nc_data["u"][:]).astype(np.float32)
-        v = np.array(nc_data["v"][:]).astype(np.float32)
-        temp = np.array(nc_data["Temp"][:]).astype(np.float32).flatten()
+        u = np.array(nc_data.variables["u"][:]).astype(np.float32)
+        v = np.array(nc_data.variables["v"][:]).astype(np.float32)
+        temp = np.array(nc_data.variables["Temp"][:]).astype(np.float32).flatten()
         dir, rap = polar2uv(u,v)
         
         ndatos_esperados = rap.shape[0]
