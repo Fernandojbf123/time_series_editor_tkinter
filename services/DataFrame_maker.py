@@ -72,32 +72,44 @@ def crear_dataframe_viento_desde_pickle(data):
         data.set_index("Fecha y hora de medicion", inplace=True)
     tspan = data.index
     
+    vars_invalidas = [
+        'tspan', 'Lat', 'Lon', "EPROM", "Fecha y hora de medicion", 
+        'TiranteDiseno', 'TiranteEstimado', 'nombreBoya', 'Tab',
+        'origenDeLosDatos', 'tipoDeEntregable', 'NoDatalogger',
+        'NoSerieBarometro', 'ModeloInstBarometro', 'AltDisenoBarometro',
+        'NoSerieHigro', 'ModeloInstHigro', 'AltDisenoHigro', 'NoSerieAneMec',
+        'ModeloInstAneMec', 'AltDisenoAneMec', 'NoSerieAneSon',
+        'ModeloInstAneSon', 'AltDisenoAneSon']
+    
     df = pd.DataFrame()
     df['tspan'] = tspan
-    df['Pa'] = data['Pa'].to_numpy()
-    df['Ta'] = data['Ta'].to_numpy()
-    df['HR'] = data['HR'].to_numpy()
-    df['Punto de Rocio'] = data['Punto de Rocio'].to_numpy()
-    df['Rap2'] = data['Rap2'].to_numpy()
-    df['Dir2'] = data['Dir2'].to_numpy()
-    df['u (mecanico)'] = data['u (mecanico)'].to_numpy()
-    df['v (mecanico)'] = data['v (mecanico)'].to_numpy()
-    df['R5s2'] = data['R5s2'].to_numpy()    
-    df['R1s2'] = data['R1s2'].to_numpy()
-    df['Rap1'] = data['Rap1'].to_numpy()
-    df['Dir1'] = data['Dir1'].to_numpy()
-    df['u (sonico)'] = data['u (sonico)'].to_numpy()
-    df['v (sonico)'] = data['v (sonico)'].to_numpy()
-    df['R5s1'] = data['R5s1'].to_numpy()
-    df['R1s1'] = data['R1s1'].to_numpy()
-    df['Temperatura (sonico)'] = data['Temperatura (sonico)'].to_numpy()
-    df['Presion (sonico)'] = data['Presion (sonico)'].to_numpy()
-    df['Humedad relativa (sonico)'] = data['Humedad relativa (sonico)'].to_numpy()
-    df['Lluvia acumulada'] = data['Lluvia acumulada'].to_numpy()
-    df['Duracion de la lluvia'] = data['Duracion de la lluvia'].to_numpy()
-    df['Intensidad de la lluvia'] = data['Intensidad de la lluvia'].to_numpy()
-    df['Lat'] = data['Lat'].to_numpy()  
-    df['Lon'] = data['Lon'].to_numpy()
+    for col in data.columns:
+        if col not in vars_invalidas:
+            df[col] = data[col].to_numpy()
+        # df['Pa'] = data['Pa'].to_numpy()
+        # df['Ta'] = data['Ta'].to_numpy()
+        # df['HR'] = data['HR'].to_numpy()
+        # df['Punto de Rocio'] = data['Punto de Rocio'].to_numpy()
+        # df['Rap2'] = data['Rap2'].to_numpy()
+        # df['Dir2'] = data['Dir2'].to_numpy()
+        # df['u (mecanico)'] = data['u (mecanico)'].to_numpy()
+        # df['v (mecanico)'] = data['v (mecanico)'].to_numpy()
+        # df['R5s2'] = data['R5s2'].to_numpy()    
+        # df['R1s2'] = data['R1s2'].to_numpy()
+        # df['Rap1'] = data['Rap1'].to_numpy()
+        # df['Dir1'] = data['Dir1'].to_numpy()
+        # df['u (sonico)'] = data['u (sonico)'].to_numpy()
+        # df['v (sonico)'] = data['v (sonico)'].to_numpy()
+        # df['R5s1'] = data['R5s1'].to_numpy()
+        # df['R1s1'] = data['R1s1'].to_numpy()
+        # df['Temperatura (sonico)'] = data['Temperatura (sonico)'].to_numpy()
+        # df['Presion (sonico)'] = data['Presion (sonico)'].to_numpy()
+        # df['Humedad relativa (sonico)'] = data['Humedad relativa (sonico)'].to_numpy()
+        # df['Lluvia acumulada'] = data['Lluvia acumulada'].to_numpy()
+        # df['Duracion de la lluvia'] = data['Duracion de la lluvia'].to_numpy()
+        # df['Intensidad de la lluvia'] = data['Intensidad de la lluvia'].to_numpy()
+        # df['Lat'] = data['Lat'].to_numpy()  
+        # df['Lon'] = data['Lon'].to_numpy()
     
     df.sort_values('tspan', inplace=True)
     df.reset_index(drop=True, inplace=True)

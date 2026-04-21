@@ -21,7 +21,9 @@ def listar_funciones_de_carga():
         "cargar_pickle_adcp",
         "cargar_nc_adcp",
         "cargar_pickle_oleaje",
-        "cargar_nc_oleaje"
+        "cargar_nc_oleaje",
+        "cargar_pickle_meteo",
+        "cargar_nc_meteo"
     ]
     return print(lista_de_funciones)
 
@@ -53,6 +55,8 @@ def cargar_memoria_adcp_csv(ruta_a_carpeta:str, nombre_de_archivos:list, fecha_d
         elif "North" in column:
             new_columna_name = column.replace("#","_").replace("North","v")
             output_df[new_columna_name] = pd.to_numeric(joined_df[column])
+        elif "amp" in column.lower():
+            output_df[column] = pd.to_numeric(joined_df[column])
     
     # Filtrar por fecha de inicio y fecha final
     if fecha_de_inicio is not None and fecha_final is not None:
@@ -70,28 +74,54 @@ def cargar_memoria_adcp_csv(ruta_a_carpeta:str, nombre_de_archivos:list, fecha_d
         dir, rap = uv2polar(u, v)
         output_df.loc[:, f"rap_{nivel}"] = rap
         output_df.loc[:, f"dir_{nivel}"] = dir
+        
+    ae = np.full((cantidad_de_niveles, 4, len(output_df)), np.nan)
+    idx = output_df.columns.get_loc('Amp1#1')
+    for col in output_df.columns:
+        if "Amp".lower() in col.lower():
+            name = col.split("#")[0]
+            itrans = int(name.lower().replace("amp",""))
+            nivel = int(col.split("#")[1])
+            ae[nivel-1,itrans-1,:] = np.array(pd.to_numeric(output_df.iloc[:, idx]))
+            idx += 1
     
-    return output_df
+    return output_df, ae
 
 
 # 2. Cargar telemetria .dat del ADCP  
-def cargar_telemetria_adcp_dat(ruta_a_carpeta, nombre_de_archivo, indices):
+def cargar_telemetria_adcp_dat(ruta_a_carpeta, nombre_de_archivo, indices,fi,fe):
     """ Carga un archivo .dat de telemetría del ADCP y devuelve un DataFrame con las variables relevantes"""
     dict_corrientes = {}
     ruta_a_archivo = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+    output_df = crear_df_inicial(fi,fe)
+    
+    
     with open(ruta_a_archivo, 'r', encoding='utf-8') as archivo:
         # Corrientes
         for linea in archivo:
             tmp_dir = separar_linea_de_dat_txt_corrientes(linea, indices)
             if tmp_dir is not None:
-                for key, value in tmp_dir.items():
-                    if key not in dict_corrientes:
-                        dict_corrientes[key] = []
-                    dict_corrientes[key].append(value)
                 
-    output_df = pd.DataFrame(dict_corrientes)
+                date = tmp_dir["tspan"]
+                idx = output_df[output_df["tspan"] == date].index[0]
+                for key, value in tmp_dir.items():
+                    if key != "tspan" and key not in output_df.columns:
+                        output_df.loc[:, key] = np.full(len(output_df["tspan"]), np.nan)
+                    
+                    if key != "tspan":
+                        if pd.isna(output_df.at[idx, key]):
+                            output_df.at[idx, key] = value
+                        else:
+                            print(f"Warning: Duplicate entry for {key} at {date}. Existing value: {output_df.at[idx, key]}, New value: {value}. Keeping existing value.")
+   
+                # for key, value in tmp_dir.items():
+                #     if key not in dict_corrientes:
+                #         dict_corrientes[key] = []
+                #     dict_corrientes[key].append(value)
+                
+    # output_df = pd.DataFrame(dict_corrientes)
     output_df.sort_values('tspan', inplace=True)
-    output_df.drop_duplicates(subset='tspan', inplace=True, keep='first')
+    # output_df.drop_duplicates(subset='tspan', inplace=True, keep='first')
     output_df.reset_index(drop=True, inplace=True)
 
     return output_df 
@@ -115,7 +145,6 @@ def cargar_nc_adcp(ruta_a_carpeta, nombre_de_archivo):
     u = np.array(dataset.variables['u'][:])
     v = np.array(dataset.variables['v'][:])
     dir, rap = uv2polar(u, v)
-    
     temp = np.array(dataset.variables['Temp'][:]).flatten()
     
     # Crear un DataFrame
@@ -132,8 +161,33 @@ def cargar_nc_adcp(ruta_a_carpeta, nombre_de_archivo):
         output_dict[f"dir_{inivel}"] = dir[:, inivel-1]
 
     df = pd.DataFrame(output_dict)
+    # dataset.close()
     return df, dataset
 
+
+def cargar_nc_MCT(ruta_a_carpeta, nombre_de_archivo):
+    """ Carga el NETCDF del ADCP y devuelve un DataFrame con las variables relevantes"""
+    ruta_nc = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+    dataset = nc.Dataset(ruta_nc)
+    # Extraer variables relevantes
+    jd = np.array(dataset.variables['jd'][:])
+    tspan = pd.to_datetime(datenum_to_datetime(jd))
+    temp = np.array(dataset.variables['Temp'][:]).flatten()
+    cond = np.array(dataset.variables['Cond'][:]).flatten()
+    sal = np.array(dataset.variables['Sal'][:]).flatten()
+    
+      # Crear un DataFrame
+    output_dict = {
+        'tspan': tspan,  # Convertir tiempo a formato datetime
+        'temp': temp,
+        'cond': cond,
+        'sal': sal
+
+    }
+    
+    df = pd.DataFrame(output_dict)
+    # dataset.close()
+    return df, dataset
 
 ############ OLEAJE ##########
 # 1. Cargar telemtría .dat de oleaje
@@ -203,6 +257,7 @@ def cargar_nc_oleaje(ruta_a_carpeta, nombre_de_archivo):
     }
 
     df = pd.DataFrame(data_dict)
+    # dataset.close()
     return df, dataset, DirSpec
 
 
@@ -210,13 +265,86 @@ def cargar_nc_oleaje(ruta_a_carpeta, nombre_de_archivo):
 # 1. Cargar memoria .TXT de meteorológicos
 
 # 2. Cargar telemetria .dat de meteorológicos
+def cargar_telemetria_meteo_dat(ruta_a_carpeta, nombre_de_archivo, indices,fi,fe):
+    """ Carga un archivo .dat de telemetría del ADCP y devuelve un DataFrame con las variables relevantes"""
+    dict_meteo = {}
+    ruta_a_archivo = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+    output_df = crear_df_inicial(fi,fe)
+    
+    
+    with open(ruta_a_archivo, 'r', encoding='utf-8') as archivo:
+        # Meteorológicos
+        for linea in archivo:
+            tmp_dir = separar_linea_de_dat_txt_meteo(linea, indices)
+            if tmp_dir is not None:
+                
+                date = tmp_dir["tspan"]
+                idx = output_df[output_df["tspan"] == date].index[0]
+                for key, value in tmp_dir.items():
+                    if key != "tspan" and key not in output_df.columns:
+                        output_df.loc[:, key] = np.full(len(output_df["tspan"]), np.nan)
+                    
+                    if key != "tspan":
+                        if pd.isna(output_df.at[idx, key]):
+                            output_df.at[idx, key] = value
+                        else:
+                            print(f"Warning: Duplicate entry for {key} at {date}. Existing value: {output_df.at[idx, key]}, New value: {value}. Keeping existing value.")
+   
+                
+    output_df.sort_values('tspan', inplace=True)
+    output_df.reset_index(drop=True, inplace=True)
 
-# 3. Cargar pickle de meteorológicos crudo
+    return output_df 
 
-# 4. Cargar pickle de meteorológicos validado
 
-# 5. Cargar NETCDF de meteorológicos
+# 3. Cargar pickle de meteorológicos crudo / validado
+def cargar_pickle_meteo(ruta_a_carpeta, nombre_de_archivo):
+     ruta_de_archivo = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+     df_pkl = leer_datos_de_pickle(ruta_de_archivo)
+     output_df = crear_dataframe_viento_desde_pickle(df_pkl)
+     return output_df
 
+# 4. Cargar NETCDF de meteorológicos
+def cargar_nc_meteo(ruta_a_carpeta, nombre_de_archivo):
+    """ Carga el NETCDF del ADCP y devuelve un DataFrame con las variables relevantes"""
+    ruta_nc = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+    dataset = nc.Dataset(ruta_nc)
+    
+    # Extraer variables relevantes
+    jd = np.array(dataset.variables['jd'][:])
+    tspan = pd.to_datetime(datenum_to_datetime(jd))
+    Rap2 = np.array(dataset.variables['Rap2'][:]).flatten()
+    Dir2 = np.array(dataset.variables['Dir2'][:]).flatten()
+    R5s2 = np.array(dataset.variables['R5s2'][:]).flatten()
+    R1s2 = np.array(dataset.variables['R1s2'][:]).flatten()
+    Rap1 = np.array(dataset.variables['Rap1'][:]).flatten()
+    Dir1 = np.array(dataset.variables['Dir1'][:]).flatten()
+    R5s1 = np.array(dataset.variables['R5s1'][:]).flatten()
+    R1s1 = np.array(dataset.variables['R1s1'][:]).flatten()
+    Ta = np.array(dataset.variables['Ta'][:]).flatten()
+    Pa = np.array(dataset.variables['Pa'][:]).flatten()
+    HR = np.array(dataset.variables['HR'][:]).flatten()
+        
+    # Crear un DataFrame
+    output_dict = {
+        'tspan': tspan,  # Convertir tiempo a formato datetime
+        'Pa': Pa,
+        'Ta': Ta,
+        'HR': HR,
+        'Rap1': Rap1,
+        'Dir1': Dir1,
+        'R5s1': R5s1,
+        'R1s1': R1s1,
+        'R5s2': R5s2,
+        'R1s2': R1s2,
+        'Rap2': Rap2,
+        'Dir2': Dir2
+    }
+    
+    
+    df = pd.DataFrame(output_dict)
+    # dataset.close()
+    return df, dataset
 
 
 ################### FUNCIONES AUXILIARES ###################
@@ -296,12 +424,12 @@ class Crear_indices_para_crudos_dat_o_txt():
             "vardir_oleaje": 11,
             
             "presion": 7,
-            "humedad": 8,
-            "temp_aire": 9,
-            "dir_viento_mecanico": 10,
-            "rap_viento_mecanico": 11,
-            "dir_viento_sonico": 12,
-            "rap_viento_sonico": 13
+            "temp_aire": 8,
+            "HR": 9,
+            "dir_viento_mecanico": 11,
+            "rap_viento_mecanico": 10,
+            "dir_viento_sonico": 13,
+            "rap_viento_sonico": 12
         }
         if tipo == "mem":
             for key in self.indices.keys():
@@ -358,6 +486,51 @@ class Crear_indices_para_crudos_dat_o_txt():
         return self.indices
 
 
+def separar_linea_de_dat_txt_meteo(linea, indices):
+    """ Recibe una línea de un archivo .dat o .txt de meteorológicos; cada línea representa una medición (un registro)."""
+    try:
+        msg = int(linea.split(",")[indices["pos_msg"]])
+    except:
+        return None
+    
+    if msg != indices["msg_meteo"]:
+        return None
+    
+    tspan = get_tspan(linea)
+    
+    # Presión, temperatura del aire y humedad relativa
+    presion = np.nan
+    if np.array(linea.split(",")[indices["presion"]]) != '':
+        presion = np.array(linea.split(",")[indices["presion"]])
+        presion = presion.astype(np.float32)
+    
+    temp_aire = np.nan
+    if np.array(linea.split(",")[indices["temp_aire"]]) != '':
+        temp_aire = np.array(linea.split(",")[indices["temp_aire"]])
+        temp_aire = temp_aire.astype(np.float32)
+    
+    humedad_relativa = np.nan
+    if np.array(linea.split(",")[indices["HR"]]) != '':
+        humedad_relativa = np.array(linea.split(",")[indices["HR"]])
+        humedad_relativa = humedad_relativa.astype(np.float32)
+    
+    # Viento mecánico
+    dir_viento_mecanico = np.nan
+    rap_viento_mecanico = np.nan
+    if np.array(linea.split(",")[indices["dir_viento_mecanico"]]) != '' and np.array(linea.split(",")[indices["rap_viento_mecanico"]]) != '':
+        dir_viento_mecanico = np.array(linea.split(",")[indices["dir_viento_mecanico"]])
+        rap_viento_mecanico = np.array(linea.split(",")[indices["rap_viento_mecanico"]])
+        dir_viento_mecanico = dir_viento_mecanico.astype(np.float32)
+        rap_viento_mecanico = rap_viento_mecanico.astype(np.float32)
+    
+    # Viento sónico
+    dir_viento_sonico = np.nan
+    rap_viento_sonico = np.nan
+    if np.array(linea.split(",")[indices["dir_viento_sonico"]]) != '' and np.array(linea.split(",")[indices["rap_viento_sonico"]]) != '':
+        dir_viento_sonico = np.array(linea.split(",")[indices["dir_viento_sonico"]])
+        rap_viento_sonico = np.array(linea.split(",")[indices["rap_viento_sonico"]])
+
+
 
 def separar_linea_de_dat_txt_corrientes(linea, indices):
     """" 
@@ -384,9 +557,16 @@ def separar_linea_de_dat_txt_corrientes(linea, indices):
     dir = rap_dir.split("@&2C")[1::2] # [nivel]
     
     # Temperatura
-    temp_adpc = np.array(linea.split(",")[indices["temp_adpc"]]).astype(np.float32)
-    temp_termo = np.array(linea.split(",")[indices["termo_sal"]]).astype(np.float32)
+    temp_adpc = np.nan
+    if np.array(linea.split(",")[indices["temp_adpc"]]) != '':
+        temp_adcp = np.array(linea.split(",")[indices["temp_adpc"]])
+        temp_adpc = temp_adcp.astype(np.float32)
     
+    temp_termo = np.nan
+    if np.array(linea.split(",")[indices["termo_sal"]]) != '':
+        temp_termo = np.array(linea.split(",")[indices["termo_sal"]])
+        temp_termo = temp_termo.astype(np.float32)
+            
     
     tmp_dict = {}
     for inivel in range(1,len(rap)+1):
@@ -459,3 +639,11 @@ def crear_df_inicial(fecha_de_inicio, fecha_final):
     df = pd.DataFrame({"tspan": tspan})
     return df
 
+def comprobar_ae_csv(ae: np.ndarray, fecha_de_inicio: str, fecha_final: str) -> None: 
+    esperados = pd.date_range(start=pd.to_datetime(fecha_de_inicio, format='%d/%m/%Y %H:%M'), end=pd.to_datetime(fecha_final, format='%d/%m/%Y %H:%M'), freq='h')
+    count_valid = 0
+    for iday in range(0, ae.shape[2]):
+        if ~np.isnan(ae[:, :, iday]).all():
+            count_valid += 1
+    
+    print(f"Cantidad de días con datos válidos: {count_valid} de {len(esperados)} esperados.")

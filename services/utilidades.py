@@ -41,17 +41,20 @@ def cargar_pickle_crudo_y_validado(rutas_de_archivos, msg):
     
     return dict
 
-def crear_dataframe_de_boyas(dict):
+def crear_dataframe_de_boyas(dict_in):
     df = pd.DataFrame()
-    for key,value in dict.items():
+    for key,value in dict_in.items():
         df = pd.concat([df, value["tspan"]], axis=0)
     df.drop_duplicates(inplace=True)
     df.sort_values("tspan", inplace=True)
 
-    for boya, df_boya in dict.items():
+    for boya, df_boya in dict_in.items():
         for col in df_boya.columns:
             if col != "tspan":
-                df_boya[col] = df_boya[col].astype(np.float32)
+                try: 
+                    df_boya[col] = df_boya[col].astype(np.float32)
+                except:
+                    raise ValueError("HAY DATOS CON UN FORMATO INADECUADO ABOSADO! 🙀")
                 df = df.merge(df_boya[["tspan", col]].rename(columns={col: f"{col}_{boya}"}), on="tspan", how="left")
 
     print(df.columns)
