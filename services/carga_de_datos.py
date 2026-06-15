@@ -142,6 +142,7 @@ def cargar_nc_adcp(ruta_a_carpeta, nombre_de_archivo):
     # Extraer variables relevantes
     jd = np.array(dataset.variables['jd'][:])
     tspan = pd.to_datetime(datenum_to_datetime(jd))
+
     u = np.array(dataset.variables['u'][:])
     v = np.array(dataset.variables['v'][:])
     dir, rap = uv2polar(u, v)
@@ -164,7 +165,6 @@ def cargar_nc_adcp(ruta_a_carpeta, nombre_de_archivo):
     # dataset.close()
     return df, dataset
 
-
 def cargar_nc_MCT(ruta_a_carpeta, nombre_de_archivo):
     """ Carga el NETCDF del ADCP y devuelve un DataFrame con las variables relevantes"""
     ruta_nc = os.path.join(ruta_a_carpeta, nombre_de_archivo)
@@ -185,6 +185,35 @@ def cargar_nc_MCT(ruta_a_carpeta, nombre_de_archivo):
 
     }
     
+    df = pd.DataFrame(output_dict)
+    # dataset.close()
+    return df, dataset
+
+def cargar_concatenado(ruta_a_carpeta,nombre_de_archivo):
+    """ Carga el NETCDF concatenado y devuelve un DataFrame con las variables relevantes"""
+    ruta_nc = os.path.join(ruta_a_carpeta, nombre_de_archivo)
+    dataset = nc.Dataset(ruta_nc)
+    
+    jd = np.array(dataset.variables['MT'][:])
+    tspan = pd.to_datetime(datenum_to_datetime(jd))
+        
+    u = np.array(dataset.variables['u'][:])
+    v = np.array(dataset.variables['v'][:])
+    dir, rap = uv2polar(u, v)
+    # temp = np.array(dataset.variables['temperature'][:])
+    
+    # Crear un DataFrame
+    output_dict = {
+        'tspan': tspan  # Convertir tiempo a formato datetime
+    }
+    
+    
+    for inivel in range(1, u.shape[1]+1):
+        output_dict[f"rap_{inivel}"] = []
+        output_dict[f"dir_{inivel}"] = []
+        output_dict[f"rap_{inivel}"] = rap[:, inivel-1]
+        output_dict[f"dir_{inivel}"] = dir[:, inivel-1]
+
     df = pd.DataFrame(output_dict)
     # dataset.close()
     return df, dataset
