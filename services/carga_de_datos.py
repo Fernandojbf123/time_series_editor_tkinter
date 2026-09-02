@@ -135,7 +135,10 @@ def cargar_pickle_adcp(ruta_a_carpeta, nombre_de_archivo):
 
 # 4. Cargar NETCDF del ADCP
 def cargar_nc_adcp(ruta_a_carpeta, nombre_de_archivo):
-    """ Carga el NETCDF del ADCP y devuelve un DataFrame con las variables relevantes"""
+    """ Carga el NETCDF del ADCP y devuelve un DataFrame con las variables relevantes
+    Devuelva una tupla con el DataFrame y el objeto dataset de netCDF4 para poder acceder a otras variables si es necesario
+    (df, dataset)
+    """
     ruta_nc = os.path.join(ruta_a_carpeta, nombre_de_archivo)
     dataset = nc.Dataset(ruta_nc)
     
@@ -217,6 +220,33 @@ def cargar_concatenado(ruta_a_carpeta,nombre_de_archivo):
     df = pd.DataFrame(output_dict)
     # dataset.close()
     return df, dataset
+
+
+def cargar_temperaturas(ruta_a_carpeta, nombre_pkl, sufijo=None):
+    ruta_de_archivo_pkl = os.path.join(ruta_a_carpeta, nombre_pkl)
+    df_pkl = leer_datos_de_pickle(ruta_de_archivo_pkl)
+    
+    columnas_de_interes = {
+        "tspan": ["Fecha y hora de medicion"],
+        "temp_termistor": ["Temperatura termistor"], 
+        "temp_adcp": ["Temp"],
+        "temp_mct": ["Temperatura del agua (MCT)", "Temperatura del agua (MCT P)"]
+    }
+    
+    cols_encontradas = []
+    for columna in df_pkl.columns:
+        for key, posibles_nombres in columnas_de_interes.items():
+            if columna in posibles_nombres:
+                col_name = key
+                if sufijo is not None and columna != "Fecha y hora de medicion":
+                    col_name = f"{key}_{sufijo}"
+                df_pkl.rename(columns={columna: col_name}, inplace=True)
+                cols_encontradas.append(col_name)
+                
+    df_pkl = df_pkl[cols_encontradas]
+    df_pkl['tspan'] = pd.to_datetime(df_pkl['tspan'], errors='coerce')
+     
+    return df_pkl
 
 ############ OLEAJE ##########
 # 1. Cargar telemtría .dat de oleaje
