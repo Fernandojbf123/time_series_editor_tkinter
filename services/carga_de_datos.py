@@ -170,24 +170,22 @@ def cargar_nc_adcp(ruta_a_carpeta, nombre_de_archivo):
 
 def cargar_nc_MCT(ruta_a_carpeta, nombre_de_archivo):
     """ Carga el NETCDF del ADCP y devuelve un DataFrame con las variables relevantes"""
+    
+    output_dict = {}
     ruta_nc = os.path.join(ruta_a_carpeta, nombre_de_archivo)
     dataset = nc.Dataset(ruta_nc)
     # Extraer variables relevantes
     jd = np.array(dataset.variables['jd'][:])
-    tspan = pd.to_datetime(datenum_to_datetime(jd))
-    temp = np.array(dataset.variables['Temp'][:]).flatten()
-    cond = np.array(dataset.variables['Cond'][:]).flatten()
-    sal = np.array(dataset.variables['Sal'][:]).flatten()
+    output_dict['tspan'] = pd.to_datetime(datenum_to_datetime(jd))
     
-      # Crear un DataFrame
-    output_dict = {
-        'tspan': tspan,  # Convertir tiempo a formato datetime
-        'temp': temp,
-        'cond': cond,
-        'sal': sal
-
-    }
+    variables = ["Temp", "Cond", "Sal"]
+    for var in variables:
+        if var in dataset.variables.keys(): 
+            output_dict[var.lower()] = np.array(dataset.variables[var][:]).flatten()
+        else:
+            print(f"No se encontró la variable: {var} en el archivo NC")
     
+    # Crear un DataFrame
     df = pd.DataFrame(output_dict)
     # dataset.close()
     return df, dataset

@@ -1,4 +1,48 @@
 def obtener_boyas(eleccion: int | list[int], estado: str = "validado"):
+    """
+    opciones:
+    estado = "validado" (por defecto), "crudo" o "todos"
+
+    - crudo: devuelve solo los estados crudos
+    - validado: devuelve solo los estados validados
+    - todos: devuelve todos los estados disponibles
+    
+    01: "BOT1-01-T80"
+    
+    02: "BOT1-03-T50"
+    
+    03: "BOT1-04-T80"
+    
+    04: "BOT1-05-T50"
+    
+    05: "BOT1-06-T50"
+    
+    06: "BOT1-07-T80"
+    
+    07: "BOT1-09-T50"
+    
+    08: "BOT1-10-T40"
+    
+    09: "BOT1-11-T100"
+    
+    10: "BOT2-01-T20"
+    
+    11: "BOT2-02-T20"
+    
+    12: "BMT2-01-T20"
+    
+    13: "BMT3-03-T80"
+    
+    14: "BMT3-04-T45"
+    
+    15: "BMT3-10-T45"
+    
+    16: "BMT3-10-T45"
+    
+    17: "BMT3-11-T1000"
+
+    """
+
 
     boyas = {
         1: {"name": "BOT1-01-T80", "estados": ["crudo","validado"]}, 
@@ -21,11 +65,11 @@ def obtener_boyas(eleccion: int | list[int], estado: str = "validado"):
     }
     
     if estado == "crudo":
-        index = 0;
+        index = [0];
     elif estado == "validado":
-        index = 1;
+        index = [1];
     elif estado == "todos":
-        index = slice(0,2);
+        index = [0,1];
     else:
         raise ValueError(f"Estado desconocido: {estado}")
     
@@ -34,7 +78,7 @@ def obtener_boyas(eleccion: int | list[int], estado: str = "validado"):
         boya = boyas.get(eleccion, None)
         nombre = boya.get("name",None)
         estados = boya.get("estados",None)
-        elegidas[nombre] = estados[index]
+        elegidas[nombre] = [estados[i] for i in index]
          
     if isinstance(eleccion, list):
         for e in eleccion:
@@ -42,7 +86,7 @@ def obtener_boyas(eleccion: int | list[int], estado: str = "validado"):
             if boya:
                 nombre = boya.get("name",None)
                 estados = boya.get("estados",None)
-                elegidas[nombre] = estados[index]
+                elegidas[nombre] = [estados[i] for i in index]
     
     return elegidas
        

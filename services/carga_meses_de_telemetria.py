@@ -16,10 +16,12 @@ def cargar_telemetria_adcp(nombre_de_boya: str, anios: list, meses: list, tipo: 
     - df_concatenado 
     
     """
+    msjs = []
     if tipo == "validado":
-        tipo = "msj4_validados_realt"
+        msjs = ["msj4_validados_realt","msj24_validados_realt"]
     elif tipo == "crudo":
-        tipo = "msj4_crudo_unido_realt"
+        msjs = ["msj4_crudo_unido_realt","msj24_crudo_unido_realt"]
+    
     
     meses_str = []
     for mes in meses:
@@ -32,8 +34,9 @@ def cargar_telemetria_adcp(nombre_de_boya: str, anios: list, meses: list, tipo: 
         ruta_a_carpeta = f"\\\\192.168.15.249\\Med_2025-2026\\Reportes_Edit\\Reporte_{reporte}\\{anio}\\{mes}\\{nombre_de_boya}\\DATOS"
         archivos = os.listdir(ruta_a_carpeta)
         for archivo in archivos:
-            if archivo.startswith(tipo) and archivo.endswith(".pkl"):
+            if (archivo.startswith(msjs[0]) or archivo.startswith(msjs[1])) and archivo.endswith(".pkl") and not archivo.endswith("_copia.pkl"):
                 nombre_de_archivo = archivo
+                print(f"{nombre_de_boya} - {nombre_de_archivo}")
                 df_actual, _ = cargar_pickle_adcp(ruta_a_carpeta, nombre_de_archivo)
                 df_concatenado = pd.concat([df_concatenado, df_actual], ignore_index=True)
     
@@ -53,11 +56,11 @@ def cargar_telemetria_oleaje(nombre_de_boya: str, anios: list, meses: list, tipo
     - df_concatenado
     
     """
-    
+    msjs = []
     if tipo == "validado":
-        tipo = "msj3_validados_realt"
+        msjs = ["msj3_validados_realt","msj23_validados_realt"]
     elif tipo == "crudo":
-        tipo = "msj3_crudo_unido_realt"
+        msjs = ["msj3_crudo_unido_realt","msj23_crudo_unido_realt"]
     
     meses_str = []
     for mes in meses:
@@ -70,7 +73,7 @@ def cargar_telemetria_oleaje(nombre_de_boya: str, anios: list, meses: list, tipo
         ruta_a_carpeta = f"\\\\192.168.15.249\\Med_2025-2026\\Reportes_Edit\\Reporte_{reporte}\\{anio}\\{mes}\\{nombre_de_boya}\\DATOS"
         archivos = os.listdir(ruta_a_carpeta)
         for archivo in archivos:
-            if archivo.startswith(tipo) and archivo.endswith(".pkl"):
+            if (archivo.startswith(msjs[0]) or archivo.startswith(msjs[1])) and archivo.endswith(".pkl") and not archivo.endswith("_copia.pkl"):
                 df_actual = cargar_pickle_oleaje(ruta_a_carpeta, archivo)
                 df_concatenado = pd.concat([df_concatenado, df_actual], ignore_index=True)
                     
@@ -108,7 +111,7 @@ def cargar_telemetria_meteo(nombre_de_boya: str, anios: list, meses: list, tipo:
         ruta_a_carpeta = f"\\\\192.168.15.249\\Med_2025-2026\\Reportes_Edit\\Reporte_{reporte}\\{anio}\\{mes}\\{nombre_de_boya}\\DATOS"
         archivos = os.listdir(ruta_a_carpeta)
         for archivo in archivos:
-            if archivo.startswith(tipo) and archivo.endswith(".pkl"):
+            if archivo.startswith(tipo) and archivo.endswith(".pkl") and not archivo.endswith("_copia.pkl"):
                 df_actual = cargar_pickle_meteo(ruta_a_carpeta, archivo)
                 df_concatenado = pd.concat([df_concatenado, df_actual], ignore_index=True)
                     
