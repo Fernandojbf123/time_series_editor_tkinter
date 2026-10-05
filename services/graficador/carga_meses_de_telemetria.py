@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-from services.carga_de_datos import *   
+from services.graficador.carga_de_datos import *   
 
 def cargar_telemetria_adcp(nombre_de_boya: str, anios: list, meses: list, tipo: str = "validado"):
     """ 

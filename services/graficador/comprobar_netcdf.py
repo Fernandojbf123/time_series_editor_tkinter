@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-from services.polar2uv import polar2uv
+from services.compartidos.polar2uv import polar2uv
 
 def comprobar_nombre_nc(nombre_de_archivo, nc_data):
     

@@ -3,10 +3,10 @@ import pickle
 import numpy as np
 import pandas as pd
 import netCDF4 as nc
-from services.date_functions import datenum_to_datetime
-from services.get_tspan import get_tspan
-from services.DataFrame_maker import *
-from services.uv2polar import uv2polar
+from services.graficador.date_functions import datenum_to_datetime
+from services.graficador.get_tspan import get_tspan
+from services.graficador.DataFrame_maker import *
+from services.compartidos.uv2polar import uv2polar
 
 """" 
 Este archivo contiene las funciones de carga de cada tipo de archivo; cada función devuelve un dataframe.
